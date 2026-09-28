@@ -1,0 +1,5 @@
+[{"page":1,"pages":1,"per_page":100,"total":4},
+ [{"country":{"id":"AR","value":"Argentina"},"date":"2020","value":42.3},
+  {"country":{"id":"AR","value":"Argentina"},"date":"2019","value":42.9},
+  {"country":{"id":"AR","value":"Argentina"},"date":"2018","value":41.3},
+  {"country":{"id":"AR","value":"Argentina"},"date":"2011","value":null}]]
