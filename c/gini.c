@@ -1,13 +1,16 @@
 /*
- * Capa intermedia - Iteracion 1 (C puro, sin ensamblador).
- * En la iteracion 2 el cuerpo de esta funcion se reemplaza por
- * una llamada a la rutina en asm.
+ * Capa intermedia - Iteracion 2.
+ * Python llama a esta funcion (via ctypes). Ya no hace la cuenta en C:
+ * se la delega a la rutina en ensamblador (asm/gini_asm.s), que recibe
+ * el parametro y devuelve el resultado a traves del stack.
+ *
+ * Version de la iteracion 1 (C puro), como referencia:
+ *     long entero = (long)valor;   // truncamiento, equivale a cvttsd2si
+ *     return entero + 1;
  */
 #include "gini.h"
 
 long gini_to_int_plus1(double valor)
 {
-    /* Conversion por TRUNCAMIENTO (equivale a cvttsd2si en asm). */
-    long entero = (long)valor;
-    return entero + 1;
+    return gini_asm(valor);
 }
