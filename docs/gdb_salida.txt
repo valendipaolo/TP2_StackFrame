@@ -1,0 +1,64 @@
+Punto de interrupción 1 at 0x1152: file c/main_asm.c, line 14.
+Punto de interrupción 2 at 0x118f: file asm/gini_asm.s, line 20.
+Punto de interrupción 3 at 0x11aa: file asm/gini_asm.s, line 41.
+[Depuración de hilo usando libthread_db enabled]
+Using host libthread_db library "/usr/lib/x86_64-linux-gnu/libthread_db.so.1".
+
+Breakpoint 1, main () at c/main_asm.c:14
+14	    resultado = gini_asm(gini);     /* <-- la llamada que vamos a observar */
+
+================ ANTES (main, antes de llamar a gini_asm) ================
+rsp            0x7fffffffd970      0x7fffffffd970
+rbp            0x7fffffffd980      0x7fffffffd980
+--- stack desde rsp ---
+0x7fffffffd970:	0x4044feb851eb851f	0x0000000000000000
+0x7fffffffd980:	0x00007fffffffda30	0x00007ffff7c2a601
+--- variable gini leida como double ---
+0x7fffffffd970:	41.990000000000002
+
+Breakpoint 2, gini_asm () at asm/gini_asm.s:20
+20	        push    rbp                     # guarda el ancla de quien nos llamo
+
+================ DURANTE 1 (entrada a gini_asm) ================
+call apilo la direccion de retorno a main:
+rsp            0x7fffffffd968      0x7fffffffd968
+0x7fffffffd968:	0x0000555555555160	0x4044feb851eb851f
+
+Breakpoint 3, convertir_stack () at asm/gini_asm.s:41
+41	        push    rbp
+44	        movsd   xmm0, QWORD PTR [rbp+16]    # lee el parametro desde el stack
+
+================ DURANTE 2 (convertir_stack, frame armado) ================
+rsp            0x7fffffffd940      0x7fffffffd940
+rbp            0x7fffffffd940      0x7fffffffd940
+--- [rbp]=rbp viejo  [rbp+8]=dir. retorno  [rbp+16]=PARAMETRO ---
+0x7fffffffd940:	0x00007fffffffd960	0x00005555555551a1
+0x7fffffffd950:	0x4044feb851eb851f	0x0000000000000000
+--- parametro leido desde el stack ---
+0x7fffffffd950:	41.990000000000002
+49	        pop     rbp
+
+================ DURANTE 3 (convertir_stack, resultado escrito) ================
+0x7fffffffd940:	0x00007fffffffd960	0x00005555555551a1
+0x7fffffffd950:	0x000000000000002a	0x0000000000000000
+--- resultado leido desde el stack ---
+0x7fffffffd950:	42
+gini_asm () at asm/gini_asm.s:26
+26	        mov     rax, QWORD PTR [rsp]    # (3) RESULTADO <- stack
+28	        mov     rsp, rbp                # libera lo reservado
+
+================ DURANTE 4 (gini_asm leyo el resultado del stack) ================
+$1 = 42
+0x0000555555555160 in main () at c/main_asm.c:14
+14	    resultado = gini_asm(gini);     /* <-- la llamada que vamos a observar */
+16	    printf("GINI %.2f -> %ld\n", gini, resultado);
+
+================ DESPUES (main, linea 16) ================
+rsp            0x7fffffffd970      0x7fffffffd970
+rbp            0x7fffffffd980      0x7fffffffd980
+rax            0x2a                42
+0x7fffffffd970:	0x4044feb851eb851f	0x000000000000002a
+0x7fffffffd980:	0x00007fffffffda30	0x00007ffff7c2a601
+$2 = 42
+GINI 41.99 -> 42
+[Inferior 1 (process 26950) exited normally]
