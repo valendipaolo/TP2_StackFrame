@@ -1,1 +1,4 @@
 build/
+__pycache__/
+*.o
+*.so.gdb_history

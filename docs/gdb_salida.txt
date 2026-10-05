@@ -1,64 +1,102 @@
-Punto de interrupción 1 at 0x1152: file c/main_asm.c, line 14.
-Punto de interrupción 2 at 0x118f: file asm/gini_asm.s, line 20.
-Punto de interrupción 3 at 0x11aa: file asm/gini_asm.s, line 41.
+gdb -q -nx -batch -x docs/gdb_stack.gdb build/main_asm
+Punto de interrupción 1 at 0x1152: file c/main_asm.c, line 18.
+Punto de interrupción 2 at 0x11b9: file asm/gini_asm.s, line 28.
+Punto de interrupción 3 at 0x11bd: file asm/gini_asm.s, line 31.
+Punto de interrupción 4 at 0x11d6: file asm/gini_asm.s, line 53.
+Punto de interrupción 5 at 0x11e8: file asm/gini_asm.s, line 58.
+Punto de interrupción 6 at 0x11cd: file asm/gini_asm.s, line 36.
+Punto de interrupción 7 at 0x11d1: file asm/gini_asm.s, line 38.
+Punto de interrupción 8 at 0x118e: file c/main_asm.c, line 20.
 [Depuración de hilo usando libthread_db enabled]
 Using host libthread_db library "/usr/lib/x86_64-linux-gnu/libthread_db.so.1".
 
-Breakpoint 1, main () at c/main_asm.c:14
-14	    resultado = gini_asm(gini);     /* <-- la llamada que vamos a observar */
+Breakpoint 1, main () at c/main_asm.c:18
+18	    resultado = gini_asm(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, gini);   /* <-- llamada observada */
 
-================ ANTES (main, antes de llamar a gini_asm) ================
-rsp            0x7fffffffd970      0x7fffffffd970
-rbp            0x7fffffffd980      0x7fffffffd980
---- stack desde rsp ---
-0x7fffffffd970:	0x4044feb851eb851f	0x0000000000000000
-0x7fffffffd980:	0x00007fffffffda30	0x00007ffff7c2a601
+================ ANTES (main, todavia no apilo nada) ================
+rsp            0x7fffffffdbd0      0x7fffffffdbd0
+rbp            0x7fffffffdbe0      0x7fffffffdbe0
+--- stack desde rsp: [rsp]=gini  [rsp+8]=resultado (sin valor aun) ---
+0x7fffffffdbd0:	0x4044feb851eb851f	0x0000000000000000
+0x7fffffffdbe0:	0x00007fffffffdc90	0x00007ffff7c2a601
 --- variable gini leida como double ---
-0x7fffffffd970:	41.990000000000002
+0x7fffffffdbd0:	41.990000000000002
 
-Breakpoint 2, gini_asm () at asm/gini_asm.s:20
-20	        push    rbp                     # guarda el ancla de quien nos llamo
+Breakpoint 2, gini_asm () at asm/gini_asm.s:28
+28	        push    rbp                     # guarda el ancla de quien nos llamo
 
 ================ DURANTE 1 (entrada a gini_asm) ================
-call apilo la direccion de retorno a main:
-rsp            0x7fffffffd968      0x7fffffffd968
-0x7fffffffd968:	0x0000555555555160	0x4044feb851eb851f
+C hizo: sub rsp,8 / push gini / call  ->  rsp bajo 24 bytes
+rsp            0x7fffffffdbb8      0x7fffffffdbb8
+--- [rsp]=dir. retorno a main  [rsp+8]=GINI APILADO POR C  [rsp+16]=relleno ---
+0x7fffffffdbb8:	0x0000555555555186	0x4044feb851eb851f
+0x7fffffffdbc8:	0x0000000000000000
+0x7fffffffdbc0:	41.990000000000002
+--- xmm0 es relleno: el dato NO vino por registro ---
+$1 = 0
 
-Breakpoint 3, convertir_stack () at asm/gini_asm.s:41
-41	        push    rbp
-44	        movsd   xmm0, QWORD PTR [rbp+16]    # lee el parametro desde el stack
+Breakpoint 3, gini_asm () at asm/gini_asm.s:31
+31	        sub     rsp, 8                  # relleno: deja rsp alineado a 16 antes del call
 
-================ DURANTE 2 (convertir_stack, frame armado) ================
-rsp            0x7fffffffd940      0x7fffffffd940
-rbp            0x7fffffffd940      0x7fffffffd940
---- [rbp]=rbp viejo  [rbp+8]=dir. retorno  [rbp+16]=PARAMETRO ---
-0x7fffffffd940:	0x00007fffffffd960	0x00005555555551a1
-0x7fffffffd950:	0x4044feb851eb851f	0x0000000000000000
---- parametro leido desde el stack ---
-0x7fffffffd950:	41.990000000000002
-49	        pop     rbp
+================ DURANTE 2 (gini_asm, frame armado) ================
+rsp            0x7fffffffdbb0      0x7fffffffdbb0
+rbp            0x7fffffffdbb0      0x7fffffffdbb0
+--- [rbp]=rbp de main  [rbp+8]=dir. retorno  [rbp+16]=PARAMETRO de C ---
+0x7fffffffdbb0:	0x00007fffffffdbe0	0x0000555555555186
+0x7fffffffdbc0:	0x4044feb851eb851f
+0x7fffffffdbc0:	41.990000000000002
 
-================ DURANTE 3 (convertir_stack, resultado escrito) ================
-0x7fffffffd940:	0x00007fffffffd960	0x00005555555551a1
-0x7fffffffd950:	0x000000000000002a	0x0000000000000000
---- resultado leido desde el stack ---
-0x7fffffffd950:	42
-gini_asm () at asm/gini_asm.s:26
-26	        mov     rax, QWORD PTR [rsp]    # (3) RESULTADO <- stack
-28	        mov     rsp, rbp                # libera lo reservado
+Breakpoint 4, convertir_stack () at asm/gini_asm.s:53
+53	        movsd   xmm0, QWORD PTR [rbp+16]    # lee el parametro desde el stack
 
-================ DURANTE 4 (gini_asm leyo el resultado del stack) ================
-$1 = 42
-0x0000555555555160 in main () at c/main_asm.c:14
-14	    resultado = gini_asm(gini);     /* <-- la llamada que vamos a observar */
-16	    printf("GINI %.2f -> %ld\n", gini, resultado);
+================ DURANTE 3 (convertir_stack, frame armado) ================
+rsp            0x7fffffffdb90      0x7fffffffdb90
+rbp            0x7fffffffdb90      0x7fffffffdb90
+--- [rbp]=rbp de gini_asm  [rbp+8]=dir. retorno  [rbp+16]=PARAMETRO ---
+0x7fffffffdb90:	0x00007fffffffdbb0	0x00005555555551c9
+0x7fffffffdba0:	0x4044feb851eb851f	0x0000000000000000
+0x7fffffffdba0:	41.990000000000002
 
-================ DESPUES (main, linea 16) ================
-rsp            0x7fffffffd970      0x7fffffffd970
-rbp            0x7fffffffd980      0x7fffffffd980
-rax            0x2a                42
-0x7fffffffd970:	0x4044feb851eb851f	0x000000000000002a
-0x7fffffffd980:	0x00007fffffffda30	0x00007ffff7c2a601
+Breakpoint 5, convertir_stack () at asm/gini_asm.s:58
+58	        pop     rbp
+
+================ DURANTE 4 (convertir_stack, resultado escrito) ================
+--- el slot [rbp+16] ahora tiene el RESULTADO (entero) ---
+0x7fffffffdb90:	0x00007fffffffdbb0	0x00005555555551c9
+0x7fffffffdba0:	0x000000000000002a	0x0000000000000000
+0x7fffffffdba0:	42
+
+Breakpoint 6, gini_asm () at asm/gini_asm.s:36
+36	        mov     rsp, rbp                # libera lo reservado
+
+================ DURANTE 5 (gini_asm leyo el resultado del stack) ================
+rsp            0x7fffffffdba0      0x7fffffffdba0
+rbp            0x7fffffffdbb0      0x7fffffffdbb0
+0x7fffffffdba0:	42
 $2 = 42
+
+Breakpoint 7, gini_asm () at asm/gini_asm.s:38
+38	        ret                             # vuelve a C; el resultado queda en rax
+0x0000555555555186 in main () at c/main_asm.c:18
+18	    resultado = gini_asm(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, gini);   /* <-- llamada observada */
+
+================ DURANTE 6 (main, justo despues del call) ================
+--- el argumento sigue apilado: lo limpia C con add rsp,0x10 (caller-cleanup) ---
+=> 0x555555555186 <main+77>:	add    rsp,0x10
+   0x55555555518a <main+81>:	mov    QWORD PTR [rbp-0x8],rax
+rsp            0x7fffffffdbc0      0x7fffffffdbc0
+0x7fffffffdbc0:	0x4044feb851eb851f	0x0000000000000000
+
+Breakpoint 8, main () at c/main_asm.c:20
+20	    printf("GINI %.2f -> %ld\n", gini, resultado);
+
+================ DESPUES (main, linea 20) ================
+rsp            0x7fffffffdbd0      0x7fffffffdbd0
+rbp            0x7fffffffdbe0      0x7fffffffdbe0
+rax            0x2a                42
+--- rsp volvio al valor de ANTES; [rsp+8]=resultado ---
+0x7fffffffdbd0:	0x4044feb851eb851f	0x000000000000002a
+0x7fffffffdbe0:	0x00007fffffffdc90	0x00007ffff7c2a601
+$3 = 42
 GINI 41.99 -> 42
-[Inferior 1 (process 26950) exited normally]
+[Inferior 1 (process 12552) exited normally]

@@ -1,5 +1,5 @@
 """
-Capa superior: consulta la API del Banco Mundial y delega el calculo a C.
+Capa superior: consulta la API y delega el calculo a C.
 
 Uso:
     python3 gini_client.py                 # Argentina, 2011-2020
@@ -61,7 +61,7 @@ def main():
 
     lib = cargar_lib()
     print(f"Pais: {datos[0][2]}")
-    print(f"{'Anio':>6} | {'GINI':>6} | {'int+1 (C)':>9}")
+    print(f"{'Anio':>6} | {'GINI':>6} | {'int+1 (asm)':>9}")
     print("-" * 28)
     for anio, gini, _ in datos:
         print(f"{anio:>6} | {gini:>6.1f} | {lib.gini_to_int_plus1(gini):>9}")

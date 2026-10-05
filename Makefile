@@ -22,8 +22,9 @@ test: all
 	python3 python/gini_client.py --file tests/sample_arg.json
 
 # Sesion de GDB: stack antes, durante y despues de gini_asm
+# -nx: no carga ~/.gdbinit (gdb-dashboard) para que la salida quede limpia
 gdb: $(BUILD)/main_asm
-	gdb -q -batch -x docs/gdb_stack.gdb $(BUILD)/main_asm
+	gdb -q -nx -batch -x docs/gdb_stack.gdb $(BUILD)/main_asm
 
 clean:
 	rm -rf $(BUILD)

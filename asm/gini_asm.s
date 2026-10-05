@@ -2,7 +2,9 @@
 #  Capa inferior - Iteracion 2: conversion double -> entero + 1
 #  Los datos viajan POR EL STACK (pila), como pide el enunciado.
 #
-#  gini_asm          -> puerta de entrada (se llama desde C/Python)
+#  gini_asm          -> puerta de entrada (se llama desde C/Python).
+#                       Recibe el parametro POR EL STACK, segun la
+#                       convencion System V AMD64 (9no argumento double).
 #  convertir_stack   -> hace el calculo: lee el parametro del stack
 #                       y deja el resultado en el stack
 # =====================================================================
@@ -10,24 +12,31 @@
         .text
 
 # ---------------------------------------------------------------------
-#  long gini_asm(double valor)
-#  Llega con la convencion normal de Linux 64 bits: valor en xmm0.
-#  Lo pasa a convertir_stack a traves del stack.
+#  long gini_asm(double r0, ..., double r7, double valor)
+#  r0..r7 llegan en xmm0..xmm7 y se ignoran (son relleno).
+#  'valor' es el 9no double: no quedan registros, asi que el codigo C
+#  lo apilo antes del call (y lo desapila C despues: caller-cleanup).
+#
+#  Stack despues del prologo (push rbp / mov rbp, rsp):
+#     [rbp+16] -> valor (lo apilo C)
+#     [rbp+8]  -> direccion de retorno (la puso call)
+#     [rbp]    -> rbp de quien nos llamo
 # ---------------------------------------------------------------------
         .globl  gini_asm
         .type   gini_asm, @function
 gini_asm:
         push    rbp                     # guarda el ancla de quien nos llamo
         mov     rbp, rsp                # nuestra ancla: aca empieza el frame
-        sub     rsp, 16                 # reserva 16 bytes en el stack
 
-        movsd   QWORD PTR [rsp], xmm0   # (1) PARAMETRO -> stack
+        sub     rsp, 8                  # relleno: deja rsp alineado a 16 antes del call
+        push    QWORD PTR [rbp+16]      # (1) PARAMETRO: lo que apilo C -> tope del stack
         call    convertir_stack         # (2) llama; call apila la dir. de retorno
-        mov     rax, QWORD PTR [rsp]    # (3) RESULTADO <- stack
+        mov     rax, QWORD PTR [rsp]    # (3) RESULTADO <- stack (convertir_stack lo dejo ahi)
 
         mov     rsp, rbp                # libera lo reservado
         pop     rbp                     # devuelve el ancla de quien nos llamo
-        ret                             # vuelve; el resultado queda en rax
+        ret                             # vuelve a C; el resultado queda en rax
+        .size   gini_asm, .-gini_asm
 
 # ---------------------------------------------------------------------
 #  convertir_stack
@@ -48,6 +57,6 @@ convertir_stack:
 
         pop     rbp
         ret
+        .size   convertir_stack, .-convertir_stack
 
         .section .note.GNU-stack,"",@progbits
-        
