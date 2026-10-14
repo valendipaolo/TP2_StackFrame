@@ -2,6 +2,8 @@
 
 Trabajo práctico de **Sistemas de Computación** (FCEFyN – UNC).
 
+**Repositorio:** <https://github.com/valendipaolo/TP2_StackFrame>
+
 El programa consulta el índice GINI de un país en la API REST del Banco Mundial, convierte cada valor de `double` a entero y le suma 1. Para eso atraviesa tres capas: Python, C y ensamblador x86-64. El objetivo central es mostrar cómo un lenguaje de alto nivel llama a uno de bajo nivel respetando la convención de llamadas **System V AMD64**. Los parámetros y resultados viajan por el **stack**, y su estado se inspecciona con GDB antes, durante y después de la llamada.
 
 ## Integrantes
