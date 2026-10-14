@@ -42,6 +42,8 @@ flowchart LR
 ├── asm/gini_asm.s          capa inferior (ensamblador, sintaxis Intel)
 ├── docs/gdb_stack.gdb      script de GDB: stack antes, durante y después
 ├── docs/gdb_salida.txt     salida de esa sesión
+├── docs/dashboard.gdb      sesión interactiva con GDB Dashboard
+├── docs/img/               capturas de esa sesión
 ├── tests/sample_arg.json   respuesta guardada de la API (pruebas sin red)
 └── Makefile
 ```
@@ -240,23 +242,31 @@ Al terminar, `rsp` vale lo mismo que en ANTES (`0x7fffffffdbd0`). Cada `push` y 
 
 Para seguir el stack de forma visual (requiere [gdb-dashboard](https://github.com/cyrus-and/gdb-dashboard) en `~/.gdbinit`):
 
-```
-gdb build/main_asm
->>> break main_asm.c:18
->>> run
->>> dashboard memory watch $rsp-0x40 96
->>> break *gini_asm
->>> continue
->>> stepi
+```bash
+gdb -q -x docs/dashboard.gdb build/main_asm
 ```
 
-El `watch` cubre desde el frame de `main` hasta el de `convertir_stack`, y el dashboard resalta los bytes que cambian en cada `stepi`.
+El script `docs/dashboard.gdb` configura los paneles (source, assembly, registers, stack, memory y `xmm0` en expressions), pone un breakpoint en cada etapa, corre el programa y queda parado en ANTES. La zona de memoria observada queda fija en `$base = $rsp - 0x40` (96 bytes), que cubre desde el frame de `main` hasta el de `convertir_stack`. El comando `paso`, definido en el script, avanza a la etapa siguiente y vuelve a imprimir esa zona con `x/12gx`.
 
-<!-- Capturas: agregar en docs/img/ y enlazarlas acá, por ejemplo:
-![ANTES](docs/img/antes.png)
-![DURANTE 3](docs/img/durante3.png)
-![DESPUES](docs/img/despues.png)
--->
+Las direcciones de esta sesión están desplazadas `0xa0` respecto de las tablas anteriores (por ejemplo, `rsp` en ANTES vale `0x7fffffffdc70` en lugar de `0x7fffffffdbd0`) porque GDB interactivo le pasa otro entorno al programa. Las posiciones relativas a `rsp` y `rbp` son idénticas. El panel Memory resalta en verde los bytes que cambiaron desde la parada anterior.
+
+**ANTES**: frame de `main`, con `gini` = 41.99 en `[rsp]`. Todavía no se apiló nada. `xmm0` tiene 41.99 como resto de la inicialización de `gini`; los `pxor` que siguen lo ponen en 0.
+![ANTES](docs/img/01_antes.png)
+
+**DURANTE 1**: entrada a `gini_asm`. Retorno a `main` en `[rsp]`, 41.99 en `[rsp+8]` (lo apiló C) y `xmm0` = 0: el dato no llegó por registro.
+![DURANTE 1](docs/img/02_durante1_entrada.png)
+
+**DURANTE 2**: prólogo de `gini_asm`. `rbp` = `rsp` y el `rbp` de `main` guardado en `[rbp]`.
+![DURANTE 2](docs/img/03_durante2_prologo.png)
+
+**DURANTE 3**: frame de `convertir_stack`. Retorno a `gini_asm` en `[rbp+8]`, parámetro en `[rbp+16]` y tres frames en el panel Stack.
+![DURANTE 3](docs/img/04_durante3_convertir.png)
+
+**DURANTE 4**: el slot del parámetro pasó de 41.99 a 42 (`0x2a`) y `rax` = 42. `xmm0` vuelve a valer 41.99 porque `convertir_stack` lo cargó desde el stack para convertirlo.
+![DURANTE 4](docs/img/05_durante4_resultado.png)
+
+**DESPUÉS**: `rsp` volvió a `0x7fffffffdc70` y `resultado` = 42. Debajo de `rsp` siguen los valores viejos: retornar no borra la memoria, solo mueve `rsp`.
+![DESPUÉS](docs/img/06_despues.png)
 
 ## Diagrama de secuencia
 
